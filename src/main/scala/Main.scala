@@ -1,11 +1,9 @@
 import scala.io.Source
 
 object Main extends App {
-  val operationsFile = "input.txt"
   val operationList =
-    Source.fromFile(operationsFile).getLines.filter(_ != "").toList.map(_.toString.split(" ").toList)
-  val uniqueOperations =
-    operationList.flatten.toSet
+    Source.fromFile("input.txt").getLines.filter(_ != "").toList.map(_.toString.split(" ").toList)
+  val uniqueOperations = operationList.flatten.toSet
   val operationsCount = operationList.map(_.size).max
   val detailsCount = operationList.size
 
@@ -22,25 +20,23 @@ object Main extends App {
           :: returnList)
     }
   }
-
   val result = test(operationList.headOption, operationList, operationList, List())
     .reverse.map(_.size)
 
   def formResultList(list: List[Int], count: Int): List[List[Int]] = {
     list match {
-      case y :: ys => list.take(count) +: formResultList(list.drop(count), count - 1)
+      case y :: ys => list.take(count-1) +: formResultList(list.drop(count-1), count - 1)
       case Nil => Nil
     }
   }
+  lazy val resultMatrix = formResultList(result, operationList.size)
+  lazy val padding = "%1$" ++ s"${resultMatrix.map (_.mkString (" ")).head.length}s"
 
-  val resultList = formResultList(result, operationsCount - 1)
-  println(resultList)
+  resultMatrix.map (_.mkString (" ")).foreach(x=> println (padding.format(x)))
 
-  val matrix = Array.ofDim[Int](operationsCount, operationsCount)
-  for (i <- resultList.indices) {
-    matrix(i) = resultList(i).toArray
-    println("%" +matrix(i).mkString(" "))
-  }
+  println (resultMatrix.map(_.zipWithIndex).zipWithIndex.map (x => (x._1.map(y => (y._1, (x._2 + 1)+y._2 )).filter(_._1 == 10), x._2 ))
+    .filter(_._1.nonEmpty))
 
+//  (x=> (x._1.filter(y=>(y._1 == 11)),x._2)).filter(_._1.nonEmpty))
 
 }
