@@ -20,77 +20,108 @@ object Main extends App {
           :: returnList)
     }
   }
+
   val result = test(operationList.headOption, operationList, operationList, List())
     .reverse.map(_.size)
 
   def formResultList(list: List[Int], count: Int): List[List[Int]] = {
     list match {
-      case y :: ys => list.take(count-1) +: formResultList(list.drop(count-1), count - 1)
+      case y :: ys => list.take(count - 1) +: formResultList(list.drop(count - 1), count - 1)
       case Nil => Nil
     }
   }
-  lazy val resultMatrix = formResultList(result, operationList.size)
-  lazy val padding = "%1$" ++ s"${resultMatrix.map (_.mkString (" ")).head.length}s"
 
-  resultMatrix.map (_.mkString (" ")).foreach(x=> println (padding.format(x)))
+  lazy val resultMatrix = formResultList(result, operationList.size)
+  lazy val padding = "%1$" ++ s"${resultMatrix.map(_.mkString(" ")).head.length}s"
+
+  resultMatrix.map(_.mkString(" ")).foreach(x => println(padding.format(x)))
 
   val detailsCountList = (1 to detailsCount).toList.sortWith(_ > _)
-  val detailsCountSet  = detailsCountList.toSet
-  val res = resultMatrix.map(_.zipWithIndex).zipWithIndex.map (x => (x._1.map(y => (y._1, (x._2 + 2)+y._2 ))
-    .filter(_._1 == 10), x._2 + 1 ))
-    .filter(_._1.nonEmpty).map(res => (res._1.map(_._2),res._2))
+  val detailsCountSet = detailsCountList.toSet
+  val res = resultMatrix.map(_.zipWithIndex).zipWithIndex.map(x => (x._1.map(y => (y._1, (x._2 + 2) + y._2))
+    .filter(_._1 == result.distinct.sortWith(_ > _).head), x._2 + 1))
+    .filter(_._1.nonEmpty).flatMap(res => (res._1.map(_._2 :: List(res._2))))
 
-  println (res)
 
-//  def getGroups (matrix : List[List[Int]], count : List[Int], numOfSet : Int, set : Set[Int]
-//                 , result : List[(List[Int], Int)]) :List [(List[Int],Int)] = {
-//    set.toList match {
-//      case x :: Nil =>
-//        List((List(-1),x))
-//      case x :: xs =>
-//        result match {
-//          case Nil =>
-//            count match {
-//              case z :: zs =>
-//
-//            }
-//        }
-//    }
-//
-//
-//  }
-//
-  def getGroups (matrix : List[List[Int]], count : List[Int], numOfSet : Int, set : Set[Int], result
-  : List[(List[Int],Int)] ) : List[(List[Int],Int)] = {
+  def func(l: List[List[Int]], set: Set[Int]): List[List[Int]] = {
+    l match {
+      case y :: ys =>
+        if (y.forall(set.contains))
+          y :: func(ys, set)
+        else
+          func(ys, set)
+      case Nil =>
+        List()
+    }
+  }
+
+  def getGroups(matrix: List[List[Int]], count: List[Int], numOfSet: Int, set: Set[Int], result
+  : List[List[Int]]): List[List[Int]] = {
     set.toList.sortWith(_ > _) match {
       case x :: Nil =>
-        List ((List(-1), x))
+        List(List(x))
       case x :: xs =>
         result match {
           case Nil =>
             count match {
               case z :: zs =>
-              val res = resultMatrix.map(_.zipWithIndex).zipWithIndex.map(x => (x._1.map(y => (y._1, (x._2 + 2) + y._2))
+                val res = resultMatrix.map(_.zipWithIndex).zipWithIndex.map(x => (x._1.map(y => (y._1, (x._2 + 2) + y._2))
                   .filter(_._1 == count.tail.headOption.getOrElse(-1)), x._2 + 1))
-                  .filter(_._1.nonEmpty).map(res => (res._1.map(_._2),res._2))
+                  .filter(_._1.nonEmpty).flatMap(res => res._1.map(_._2 :: List(res._2)))
                 getGroups(matrix, count.tail, count.tail.headOption.getOrElse(-1), set, res)
               case Nil => List()
             }
-              case y :: ys =>
-//            if (set.contains(y._1) && set.contains(y._2))
-//              y :: getGroups(matrix,count,numOfSet,set.filter(x => x != y._1 && x != y._2),ys)
-                val r = (y._1.toSet.union(Set(y._2)).intersect (set.diff(Set(y._2))).toList, y._2)
-                r :: getGroups(matrix,count,numOfSet, set.diff(y._1.toSet.union(Set(y._2))), ys)
-//            else
-//              getGroups(matrix,count,numOfSet,set,ys)
+          case y :: ys =>
+            def func(l: List[List[Int]], set: Set[Int]): List[List[Int]] = {
+              l match {
+                case y :: ys =>
+                  if (y.forall(set.contains))
+                    y :: func(ys, set)
+                  else
+                    func(ys, set)
+                case Nil =>
+                  List()
+              }
+            }
+
+            val r = func(result, set)
+            List(r.flatten.distinct) ::: getGroups(matrix, count, numOfSet, set.diff(r.flatten.toSet), Nil)
         }
 
       case Nil => List()
     }
   }
 
-// println(getGroups (resultMatrix, result.distinct.sortWith(_>_), result.distinct.sortWith(_>_).head,detailsCountSet, res)
-//   .filter(_._1.nonEmpty))
+  //
+  val groups = getGroups(resultMatrix, result.distinct.sortWith(_ > _), result.distinct.sortWith(_ > _).head, detailsCountSet, res)
+
+  def groupsStr(groups: List[List[Int]]) :List[List[String]] = {
+    def groupsOperationList(el: List[Int], result : List[String]) : List[String] = {
+      el match {
+        case y :: ys =>
+          if (result.isEmpty)
+            groupsOperationList(ys,operationList(y-1))
+          else
+            groupsOperationList (ys, result.toSet.union(operationList(y-1).toSet).toList)
+        case Nil =>
+          result
+      }
+    }
+    groups match {
+      case y :: ys =>
+        groupsOperationList(y,Nil) :: groupsStr(groups.tail)
+      case Nil =>
+        List()
+    }
+  }
+
+  val lab1Result = groupsStr(groups)
+
+  println("Groups:\n"+lab1Result.map(_.mkString(" ")).mkString ("\n"))
+  println ("\n"+groups.map(_.mkString(" ")).mkString ("\n"))
+
+  println ("\nSorted groups: \n" + lab1Result.sortWith(_.size > _.size).map(_.mkString(" ")).mkString ("\n"))
+
 
 }
 
