@@ -95,21 +95,22 @@ object Main extends App {
   //
   val groups = getGroups(resultMatrix, result.distinct.sortWith(_ > _), result.distinct.sortWith(_ > _).head, detailsCountSet, res)
 
-  def groupsStr(groups: List[List[Int]]) :List[List[String]] = {
-    def groupsOperationList(el: List[Int], result : List[String]) : List[String] = {
+  def groupsStr(groups: List[List[Int]]): List[List[String]] = {
+    def groupsOperationList(el: List[Int], result: List[String]): List[String] = {
       el match {
         case y :: ys =>
           if (result.isEmpty)
-            groupsOperationList(ys,operationList(y-1))
+            groupsOperationList(ys, operationList(y - 1))
           else
-            groupsOperationList (ys, result.toSet.union(operationList(y-1).toSet).toList)
+            groupsOperationList(ys, result.toSet.union(operationList(y - 1).toSet).toList)
         case Nil =>
           result
       }
     }
+
     groups match {
       case y :: ys =>
-        groupsOperationList(y,Nil) :: groupsStr(groups.tail)
+        groupsOperationList(y, Nil) :: groupsStr(groups.tail)
       case Nil =>
         List()
     }
@@ -117,10 +118,48 @@ object Main extends App {
 
   val lab1Result = groupsStr(groups)
 
-  println("Groups:\n"+lab1Result.map(_.mkString(" ")).mkString ("\n"))
-  println ("\n"+groups.map(_.mkString(" ")).mkString ("\n"))
+  println("Groups:\n" + lab1Result.map(_.mkString(" ")).mkString("\n"))
+  println("\n" + groups.map(_.mkString(" ")).mkString("\n"))
 
-  println ("\nSorted groups: \n" + lab1Result.sortWith(_.size > _.size).map(_.mkString(" ")).mkString ("\n"))
+  val lab1ResultSorted = lab1Result.sortWith(_.size > _.size)
+  val groupsAndObjects = lab1Result.zip (groups).sortWith (_._1.size > _._1.size)
+
+
+  println("\nSorted groups: \n" + lab1ResultSorted.map(_.mkString(" ")).mkString("\n"))
+  //  println ("\n"+groupsAndObjects.map(_._2.mkString(" ")).mkString ("\n"))
+
+  def getRefinedGroups(lst: List[(List[String],List[Int])]): List[(List[String],List[Int])] = {
+
+    var result: List[(List[String],List[Int])] = List((Nil, Nil))
+    var isFixed = false
+    for (i <- 1 until lst.size - 1) {
+      for (j <- i + 1 until lst.size) {
+        if (lst(j)._1.forall(lst(i)._1.contains)) {
+          result :::= lst.filter(x=> x._1!= lst(j)._1 && !(x._1.contains(result)))
+
+        }
+
+      }
+
+
+    }
+    if (result == List((Nil,Nil)) ) lst else
+    if (result.head._1.size == result.tail.head._1.size)
+//      {
+//        var res = result.map(x=>(x._1.toArray,x._2.toArray)).toArray
+//        for (i <-0 until result.head._2.size)
+//          for (j <-0 until result.tail.head._2.size)
+//            if (operationList(j).forall(operationList(i).contains))
+//              res(i)._2 = (result(j)._2.union(result(i)._2)).toArray
+//
+//      }
+      result.distinct.sortWith(_._1.size > _._1.size)
+  }
+
+
+
+  println ("Fixed groups:\n"+getRefinedGroups(groupsAndObjects).map(_._1.mkString(" ")).mkString("\n"))
+  println ("Fixed objects:\n"+getRefinedGroups(groupsAndObjects).map(_._2.mkString(" ")).mkString("\n"))
 
 
 }
