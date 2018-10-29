@@ -128,32 +128,27 @@ object Main extends App {
   println("\nSorted groups: \n" + lab1ResultSorted.map(_.mkString(" ")).mkString("\n"))
   //  println ("\n"+groupsAndObjects.map(_._2.mkString(" ")).mkString ("\n"))
 
-  def getRefinedGroups(lst: List[(List[String],List[Int])]): List[(List[String],List[Int])] = {
-
-    var result: List[(List[String],List[Int])] = List((Nil, Nil))
-    var isFixed = false
-    for (i <- 1 until lst.size - 1) {
-      for (j <- i + 1 until lst.size) {
-        if (lst(j)._1.forall(lst(i)._1.contains)) {
-          result :::= lst.filter(x=> x._1!= lst(j)._1 && !(x._1.contains(result)))
-
+  def getRefinedGroups(l: List[(List[String],List[Int])], originList : List[Int] = 1.to (operationList.size).toList)
+  : List[(List[String],List[Int])] = {
+    def groupsContain (lst: List[String]) : (List[String],List[Int]) = {
+      var res : List[Int] = Nil
+      for (i <-0 until originList.size)
+        {
+          if (operationList(originList(i)-1).forall(lst.contains))
+            res::=originList(i)
         }
-
-      }
-
-
+      (groupsStr(List(res)).flatten,res)
     }
-    if (result == List((Nil,Nil)) ) lst else
-    if (result.head._1.size == result.tail.head._1.size)
-//      {
-//        var res = result.map(x=>(x._1.toArray,x._2.toArray)).toArray
-//        for (i <-0 until result.head._2.size)
-//          for (j <-0 until result.tail.head._2.size)
-//            if (operationList(j).forall(operationList(i).contains))
-//              res(i)._2 = (result(j)._2.union(result(i)._2)).toArray
-//
-//      }
-      result.distinct.sortWith(_._1.size > _._1.size)
+    (l, originList) match {
+    case (y :: ys, x :: xs) =>
+      val result = groupsContain (l.head._1)
+      List(result) ::: getRefinedGroups(ys, originList.filterNot(result._2.contains))
+
+    case (y::ys, Nil) =>
+      List()
+    case (_, _) =>
+        List()
+  }
   }
 
 
