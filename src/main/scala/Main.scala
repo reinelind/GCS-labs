@@ -1,4 +1,7 @@
 import scala.io.Source
+import scalax.collection.Graph
+import scalax.collection.GraphEdge.DiEdge
+import scalax.collection.GraphPredef._
 
 object Main extends App {
   val operationList =
@@ -133,28 +136,74 @@ object Main extends App {
     def groupsContain (lst: List[String]) : (List[String],List[Int]) = {
       var res : List[Int] = Nil
       for (i <-0 until originList.size)
-        {
-          if (operationList(originList(i)-1).forall(lst.contains))
-            res::=originList(i)
-        }
+      {
+        if (operationList(originList(i)-1).forall(lst.contains))
+          res::=originList(i)
+      }
       (groupsStr(List(res)).flatten,res)
     }
     (l, originList) match {
-    case (y :: ys, x :: xs) =>
-      val result = groupsContain (l.head._1)
-      List(result) ::: getRefinedGroups(ys, originList.filterNot(result._2.contains))
+      case (y :: ys, x :: xs) =>
+        val result = groupsContain (l.head._1)
+        List(result) ::: getRefinedGroups(ys, originList.filterNot(result._2.contains))
 
-    case (y::ys, Nil) =>
-      List()
-    case (_, _) =>
+      case (y::ys, Nil) =>
         List()
+      case (_, _) =>
+        List()
+    }
   }
-  }
-
 
 
   println ("Fixed groups:\n"+getRefinedGroups(groupsAndObjects).map(_._1.mkString(" ")).mkString("\n"))
   println ("Fixed objects:\n"+getRefinedGroups(groupsAndObjects).map(_._2.mkString(" ")).mkString("\n"))
+  def getListOfEdges (groups : List[List[String]]) : List[List[(String,String)]] = {
+    def getNodes (list : List [String]) : List [(String, String)] = {
+      list match {
+        case y :: Nil =>
+          List()
+        case Nil =>
+          List()
+        case y :: ys =>
+          ((UniqueOperations.indexOf(y)).toString, (UniqueOperations.indexOf(ys.head)).toString) :: getNodes(ys)
+      }
+    }
+    groups match {
+      case y :: ys =>
+        getNodes(y) :: getListOfEdges(ys)
+      case _ =>
+        List()
+    }
+  }
+
+  val UniqueOperations = operationList.flatten.distinct.sorted
+  val listOfEdges = getListOfEdges(getRefinedGroups(groupsAndObjects).map(_._1)).flatten
+
+  println (listOfEdges)
+
+
+
+  val matrix = Array.ofDim[Int](uniqueOperations.size, uniqueOperations.size)
+
+  def initializeMatrix (edgesList : List[(String, String)], gr : Graph [String, DiEdge])
+  : Graph [String, DiEdge] = edgesList match {
+    case y :: ys =>
+      gr + (y._1 ~> y._2)
+      matrix (y._1.toInt)(y._2.toInt) = 1
+      initializeMatrix(ys)
+    case Nil =>
+      ()
+  }
+
+  initializeMatrix(listOfEdges)
+
+  print (matrix.transpose.map(_.mkString(" ")).mkString("\n"))
+
+  def getGraph (edgesList : List[(String,String)]) : Graph [String, DiEdge] = {
+    edgesList match {
+
+    }
+  }
 
 
 }
