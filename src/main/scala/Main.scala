@@ -1,7 +1,17 @@
+import java.io.{BufferedWriter, File, FileWriter}
+
 import scala.io.Source
 import scalax.collection.Graph
 import scalax.collection.GraphEdge.DiEdge
 import scalax.collection.GraphPredef._
+import scalax.collection.edge.LDiEdge
+import scalax.collection.io.dot._
+import scalax.collection.io.dot.implicits._
+import scalax.collection.Graph
+import scalax.collection.edge.LDiEdge
+import scalax.collection.edge.Implicits._
+import scalax.collection.io.dot._
+import implicits._
 
 object Main extends App {
   val operationList =
@@ -96,7 +106,7 @@ object Main extends App {
   }
 
   //
-  val groups = getGroups(resultMatrix, result.distinct.sortWith(_ > _), result.distinct.sortWith(_ > _).head, detailsCountSet, res)
+  val groups = getGroups(resultMatrix, result.distinct.sortWith(_ > _), result.distinct.sortWith(_ > _).head, detailsCountSet, res).filter(_.nonEmpty)
 
   def groupsStr(groups: List[List[Int]]): List[List[String]] = {
     def groupsOperationList(el: List[Int], result: List[String]): List[String] = {
@@ -119,35 +129,35 @@ object Main extends App {
     }
   }
 
-  val lab1Result = groupsStr(groups)
+  val lab1Result = groupsStr(groups).filter(_.nonEmpty)
 
   println("Groups:\n" + lab1Result.map(_.mkString(" ")).mkString("\n"))
   println("\n" + groups.map(_.mkString(" ")).mkString("\n"))
 
   val lab1ResultSorted = lab1Result.sortWith(_.size > _.size)
-  val groupsAndObjects = lab1Result.zip (groups).sortWith (_._1.size > _._1.size)
+  val groupsAndObjects = lab1Result.zip(groups).sortWith(_._1.size > _._1.size)
 
 
   println("\nSorted groups: \n" + lab1ResultSorted.map(_.mkString(" ")).mkString("\n"))
   //  println ("\n"+groupsAndObjects.map(_._2.mkString(" ")).mkString ("\n"))
 
-  def getRefinedGroups(l: List[(List[String],List[Int])], originList : List[Int] = 1.to (operationList.size).toList)
-  : List[(List[String],List[Int])] = {
-    def groupsContain (lst: List[String]) : (List[String],List[Int]) = {
-      var res : List[Int] = Nil
-      for (i <-0 until originList.size)
-      {
-        if (operationList(originList(i)-1).forall(lst.contains))
-          res::=originList(i)
+  def getRefinedGroups(l: List[(List[String], List[Int])], originList: List[Int] = 1.to(operationList.size).toList)
+  : List[(List[String], List[Int])] = {
+    def groupsContain(lst: List[String]): (List[String], List[Int]) = {
+      var res: List[Int] = Nil
+      for (i <- 0 until originList.size) {
+        if (operationList(originList(i) - 1).forall(lst.contains))
+          res ::= originList(i)
       }
-      (groupsStr(List(res)).flatten,res)
+      (groupsStr(List(res)).flatten, res)
     }
+
     (l, originList) match {
       case (y :: ys, x :: xs) =>
-        val result = groupsContain (l.head._1)
+        val result = groupsContain(l.head._1)
         List(result) ::: getRefinedGroups(ys, originList.filterNot(result._2.contains))
 
-      case (y::ys, Nil) =>
+      case (y :: ys, Nil) =>
         List()
       case (_, _) =>
         List()
@@ -155,59 +165,98 @@ object Main extends App {
   }
 
 
-  println ("Fixed groups:\n"+getRefinedGroups(groupsAndObjects).map(_._1.mkString(" ")).mkString("\n"))
-  println ("Fixed objects:\n"+getRefinedGroups(groupsAndObjects).map(_._2.mkString(" ")).mkString("\n"))
-  def getListOfEdges (groups : List[List[String]]) : List[List[(String,String)]] = {
-    def getNodes (list : List [String]) : List [(String, String)] = {
-      list match {
-        case y :: Nil =>
-          List()
+  println("Fixed groups:\n" + getRefinedGroups(groupsAndObjects).map(_._1.mkString(" ")).mkString("\n"))
+  println("Fixed objects:\n" + getRefinedGroups(groupsAndObjects).map(_._2.mkString(" ")).mkString("\n"))
+
+
+
+  def getListOfOperations (groupsIndices : List[List[Int]]) : List [List[List[String]]] = {
+    def getListFlat (indices : List[Int]) : List[List[String]] = indices match {
+      case y :: ys => operationList (y-1) :: getListFlat (ys)
+      case Nil => Nil
+    }
+    groupsIndices match {
+      case x :: xs => getListFlat(x) :: getListOfOperations(xs)
+      case Nil => List()
+    }
+
+  }
+
+  val lstOfOperations = getListOfOperations(getRefinedGroups(groupsAndObjects).map(_._2.sortWith(_ < _)))
+  println (lstOfOperations)
+
+  def getListOfEdges(operations: List [List[List[String]]]): List[List[(String, String)]] = {
+
+    def getGroups (groups : List[List[String]]) : List[List[(String,String)]] = {
+      def getNodes(list: List[String]): List[(String, String)] = {
+        list match {
+          case y :: Nil =>
+            Nil
+          case Nil =>
+            Nil
+          case y :: ys =>
+            (y,ys.head) :: getNodes (ys)
+
+        }
+      }
+      groups match {
+        case g :: gs =>
+          getNodes (g) :: getGroups (gs)
         case Nil =>
-          List()
-        case y :: ys =>
-          ((UniqueOperations.indexOf(y)).toString, (UniqueOperations.indexOf(ys.head)).toString) :: getNodes(ys)
+          List(Nil)
       }
     }
-    groups match {
-      case y :: ys =>
-        getNodes(y) :: getListOfEdges(ys)
-      case _ =>
-        List()
+    operations match {
+      case y :: ys  =>
+        getGroups (y) ::: getListOfEdges(ys)
+      case Nil =>
+        Nil
     }
   }
 
-  val UniqueOperations = operationList.flatten.distinct.sorted
-  val listOfEdges = getListOfEdges(getRefinedGroups(groupsAndObjects).map(_._1)).flatten
+  val listOfEdges = getListOfEdges(lstOfOperations).flatten
 
-  println (listOfEdges)
-
-
-
-  val matrix = Array.ofDim[Int](uniqueOperations.size, uniqueOperations.size)
-
-  def initializeMatrix (edgesList : List[(String, String)], gr : Graph [String, DiEdge])
-  : Graph [String, DiEdge] = edgesList match {
+  def initializeMatrix (edgesList : List[(String, String)], gr : Graph [String, LDiEdge])
+  : Graph [String, LDiEdge] = edgesList match {
     case y :: ys =>
-      gr + (y._1 ~> y._2)
-      matrix (y._1.toInt)(y._2.toInt) = 1
-      initializeMatrix(ys)
+      initializeMatrix(ys,gr + (y._1 ~+> y._2)(""))
     case Nil =>
-      ()
+      gr
   }
 
-  initializeMatrix(listOfEdges)
+  val resultLab3 = initializeMatrix(listOfEdges, Graph())
+  println (initializeMatrix(listOfEdges, Graph()))
 
-  print (matrix.transpose.map(_.mkString(" ")).mkString("\n"))
 
-  def getGraph (edgesList : List[(String,String)]) : Graph [String, DiEdge] = {
-    edgesList match {
+  val root = DotRootGraph (directed = true, id = None)
 
-    }
-  }
+  def edgeTransformer(innerEdge: Graph[String,LDiEdge]#EdgeT):
+  Option[(DotGraph,DotEdgeStmt)] = innerEdge.edge match {
+    case LDiEdge(source, target, label) => label match {
+      case label: String =>
+        Some((root,
+          DotEdgeStmt(source.toString,
+            target.toString,
+            if (label.nonEmpty) List(DotAttr("label", label.toString))
+            else                Nil)))
+    }}
+
+
+  val dot = resultLab3.toDot (root,edgeTransformer)
+
+  import sys.process._
+
+  val file = new File ("lab3.dot")
+  val bw = new BufferedWriter (new FileWriter(file))
+  bw.write (dot)
+  bw.close()
+
+  val terminalCommands = List ("dot -Tpng -O lab3.dot", "xdg-open lab3.dot.png")
+
+  terminalCommands.foreach (_ !)
 
 
 }
 
-//  (x=> (x._1.filter(y=>(y._1 == 11)),x._2)).filter(_._1.nonEmpty))
 
 
